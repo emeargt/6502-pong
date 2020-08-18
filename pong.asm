@@ -1,6 +1,7 @@
 .segment "HEADER"
   .byte "NES"
-  .byte $1A
+  .byte $1a
+  .byte $02
   .byte $01
   .byte %00000000
   .byte $00
@@ -13,6 +14,8 @@
 
 .segment "STARTUP"
 .segment "ZEROPAGE"
+flag: .res 1
+counter: .res 1
 
 .segment "CODE"
 
@@ -52,20 +55,38 @@ clrmem:
 
   JSR WAITVBLANK
 
-  LDA #%01000000	; intensify greens
+  LDA #%00000000
+  STA counter
   STA $2001
-
+  LDA #%10001000
+  STA $2000
+  LDA #$3F
+  STA $2006
+  LDA #$00
+  STA $2006
+  STA $2007
+  CLI
 Forever:
   JMP Forever	; infinite loop
 
-NMI:
+VBLANK:
+  INC counter
+  LDA counter
+  CMP #$3C
+  BNE SkipColourChange
+  LDA flag
+  EOR #%10000000
+  STA flag
+  STA $2001
+  LDA #$00
+  STA counter
+SkipColourChange:
   RTI
 
 ;;;;;;;;;;;;;;;;
 
 .segment "VECTORS"
-  .word NMI	; go to NMI label when NMI happens
-		; once per frame if NMI enabled
+  .word VBLANK	; vblank vector
   .word RESET	; use label RESET when processor first turns on
 		; or is reset
   .word 0	; external interrupt IRQ undefined right now
